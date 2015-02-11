@@ -1,0 +1,507 @@
+<HTML>
+
+<HEAD><TITLE>Brute Force AI</TITLE></HEAD>
+
+<SCRIPT>
+
+function isWinningPositionTicTacToe(boardPositions)
+{
+    // Precondition: boardPositions is a boolean array representing square occupancy by player
+
+    var i;
+
+    // Winning row
+
+    for(i = 0; i < 3; i++)
+    {
+        if(boardPositions[3*i] && boardPositions[3*i+1] && boardPositions[3*i+2])
+        {
+            return true;
+        }
+    }
+
+    // Winning column
+
+    for(i = 0; i < 3; i++)
+    {
+        if(boardPositions[i] && boardPositions[i+3] && boardPositions[i+6])
+        {
+            return true;
+        }
+    }
+
+    // Winning diagonal
+
+    if(boardPositions[0] && boardPositions[4] && boardPositions[8])
+    {
+        return true;
+    }
+
+    if(boardPositions[2] && boardPositions[4] && boardPositions[6])
+    {
+        return true;
+    }
+
+    // Not winning position
+
+    return false;
+}
+
+function copyArray(arr)
+{
+    var len = arr.length;
+    var clone = new Array();
+
+    for(var i = 0; i < arr.length; i++)
+    {
+        clone.push(arr[i]);
+    }
+
+    return clone;
+}
+
+function buildTicTacToeGameTree(xPositions, oPositions, isXturn)
+{
+    var i;
+    var level = new Array();
+    var isDraw = true;
+
+    var xPositionsCopy;
+    var oPositionsCopy;
+    
+    for(i = 0; i < 9; i++)
+    {
+        if(!xPositions[i] && !oPositions[i])
+        {
+            // i is an open square so no draw
+
+            isDraw = false;
+
+            // Open square: player x or o takes open position depending on turn
+
+            if(isXturn)
+            {
+                xPositions[i] = true;
+            }
+            
+            else
+            {
+                oPositions[i] = true;
+            }
+
+            // build tree: push to level: bad use of recursion
+
+            var xPositionsCopy = copyArray(xPositions);
+            var oPositionsCopy = copyArray(oPositions); 
+
+            if(isWinningPositionTicTacToe(xPositions) && isXturn)
+            {
+                level.push({value:"X", moveTree:null});
+            }
+
+            else if(isWinningPositionTicTacToe(oPositions) && !isXturn)
+            {
+                level.push({value:"O", moveTree:null});
+            }
+
+            else
+            {
+                level.push({value:i, moveTree:buildTicTacToeGameTree(xPositionsCopy, oPositionsCopy, !isXturn)});
+            }
+
+            // Backtrack: Withdraw one move to do one level at a time
+            xPositions[i] = false;
+            oPositions[i] = false;
+        }
+    }
+
+    if(isDraw)
+    {
+        return [{value:"D", moveTree:null}];
+    }
+
+    // No Draw: return constructed level
+    return level;
+}
+
+function getOtherPlayer(player)
+{
+    if(player == "X")
+    {
+        return "O";
+    }
+
+    return "X"; // player = "O"
+}
+
+function firstMoveToForceWin(player, playerTurn, gameTree)
+{
+    // Fill in a recursive implementation for this function below:
+    // gameTree[i] is the result of the player whose turn it is taking the next spot at index i.
+    // It is a pair (value, moveTree), which is explained below.
+    // For example, given that gameTree[i] represents the following game board:
+    //   X| |X
+    //   -----
+    //    |O|
+    //   -----
+    //   O| |X
+    //
+    // The empty indices are as follows (top row to bottom row, left to right: first is zero, not Oh):
+    //   X|0|X
+    //   -----
+    //   1|O|2
+    //   -----
+    //   O|3|X
+    //
+    // ...gameTree[2] would represent the following game board (O takes position 2):
+    //   X|0|X
+    //   ------
+    //   2|O|O
+    //   ------
+    //   O|5|X
+    //
+    // gameTree[i].value is a positive number, D, X, or O.  D means all spaces are filled (Draw) while X 
+    // and O mean that the result of moving to position i is a win for X or O, respectively for any index i
+    //
+    // gameTree[i].moveTree is the resulting game tree for the board after move i.  In the above case, 
+    // gameTree[2].moveTree[0].value would be X since if X moves into index 0, then the X player won:
+    //   X|X|X
+    //   ------
+    //   2|O|O
+    //   ------
+    //   O|5|X
+    //
+    // gameTree[2].moveTree[0].moveTree would be null since X the game is over.
+    //
+    // firstMoveToForceWin(player, playerTurn, gameTree) should return a positive number if player can
+    // force a win given that it's playerTurn's turn to move and the current gameTree.  Otherwise, it should
+    // return -1.  If player == playerTurn, then it should return getAvailableSquare(index)
+    // where index is the index of the position that player should first make to force the win.
+    // For example, if gameTree[2].moveTree is passed, then it should return getAvailableSquare(0), which equals 1.
+    // You may use
+   
+    
+     var len = gameTree.length;
+
+    if(player == playerTurn)
+    {
+        for(var i = 0; i < len; i++)
+        {
+            if(gameTree[i].value == player)
+            {
+                return getAvailableSquare(i);
+            }
+
+            else if(gameTree[i].value != "D" && firstMoveToForceWin(player, getOtherPlayer(playerTurn), gameTree[i].moveTree) != -1)
+            {
+                return getAvailableSquare(i);
+            }
+        }
+    }
+
+    else
+    {
+        // Can other player (playerTurn) avoid loss
+        for(var i = 0; i < len; i++)
+        {
+            if(gameTree[i].value == playerTurn || gameTree[i].value == "D")
+            { // Other player avoids loss by taking square to win or draw immediately
+                return -1;
+            }
+
+            if(firstMoveToForceWin(player, getOtherPlayer(playerTurn), gameTree[i].moveTree) == -1)
+            {
+                return -1;
+            }
+        }
+
+        return 0;
+    }
+
+    return -1;
+}
+
+
+function firstMoveToForceDraw(player, gameTree)
+{
+    var len = gameTree.length;
+    var otherPlayer = getOtherPlayer(player);
+
+    for(var i = 0; i < len; i++)
+    {
+        if(gameTree[i].moveTree == null || firstMoveToForceWin(otherPlayer, otherPlayer, gameTree[i].moveTree) == -1)
+        { // Other player can't force win
+            return getAvailableSquare(i);
+        }
+    }
+
+    return -1; // Should not get here in Tic-Tac-Toe since it's always possible to force a draw if all moves are done correctly
+}
+
+
+function getAvailableSquare(index)
+{
+   var owner; 
+
+   for(var i = 0; i < 9; i++)
+   {
+       owner = document.getElementsByName("square" + i)[0].value;
+       if(owner != "X" && owner != "O")
+       {
+           if(index == 0)
+               return i;
+
+           index--;
+       }
+   }
+
+   return -1;
+}
+
+function setStatusBar(msg)
+{
+    document.TicTacToeBoard.tttMessage.value = msg;
+}
+
+function takeTurn(squareIndex)
+{
+   var xPositions = [false, false, false, false, false, false, false, false, false];
+   var oPositions = [false, false, false, false, false, false, false, false, false];
+   var isDraw = true;
+
+   var isComputerX = document.getElementsByName("isComputerX")[0].value;
+   var playerTurn = document.getElementsByName("turn")[0].value;
+   var doesComputerMoveNext = ((isComputerX == "Y" && playerTurn == "O") || (isComputerX == "N" && playerTurn == "X"));
+
+   if(document.getElementsByName("isGameOver")[0].value == "Y")
+   {
+       setStatusBar("The game is already over.  Click New Game to start a new one.");
+       return;
+   }
+
+   if(document.getElementsByName("owner" + squareIndex)[0].value != "N")
+   {
+       if(!doesComputerMoveNext)
+       {
+           doesComputerMoveNext = confirm("Computer fails to move due to programmer error!  Try again?");
+       }
+       setStatusBar("Sorry, that square has already been taken.");
+   }
+
+   else if(document.getElementsByName("turn")[0].value == "X")
+   {
+       document.getElementsByName("square" + squareIndex)[0].value = "X";
+       document.getElementsByName("owner" + squareIndex)[0].value = "X";
+       document.getElementsByName("turn")[0].value = "O";
+   }
+
+   else
+   {
+       document.getElementsByName("square" + squareIndex)[0].value = "O";
+       document.getElementsByName("owner" + squareIndex)[0].value = "O";
+       document.getElementsByName("turn")[0].value = "X";
+   }
+
+
+   for(var i = 0; i < 9; i++)
+   {
+       if(document.getElementsByName("square" + i)[0].value == "X")
+       {
+           xPositions[i] = true;
+       }
+
+       else if(document.getElementsByName("square" + i)[0].value == "O")
+       {
+           oPositions[i] = true;
+       }
+
+       else
+       {
+           isDraw = false;
+       }
+   }
+
+   if(isWinningPositionTicTacToe(xPositions))
+   {
+       if(isComputerX == "Y")
+       {
+           setStatusBar("The game is a win for X.  Computer dominates again.");
+       }
+
+       else
+       {
+           setStatusBar("The game is a win for X.  Human gets lucky.");
+       }
+
+       document.getElementsByName("isGameOver")[0].value = "Y";
+       return;
+   }
+
+   if(isWinningPositionTicTacToe(oPositions))
+   {
+       if(isComputerX != "Y")
+       {
+           setStatusBar("The game is a win for O.  Computer dominates again.");
+       }
+
+       else
+       {
+           setStatusBar("The game is a win for O.  Human gets lucky.");
+       }
+       document.getElementsByName("isGameOver")[0].value = "Y";
+       return;
+   }
+
+   if(isDraw)
+   {
+       setStatusBar("The game is a draw.");
+       document.getElementsByName("isGameOver")[0].value = "Y";
+       return;
+   }
+
+   if(doesComputerMoveNext)
+   {
+        setStatusBar("Calculating...Give me some time to think, I was designed to be slow!");
+        setTimeout('makeBestMove()',100);
+   }
+
+   else
+   {
+       setStatusBar("Your turn!");
+   }
+}
+
+function isXTurn(player)
+{
+    if(player == "X")
+    {
+        return true;
+    }
+
+    return false;
+}
+
+function makeBestMove()
+{
+    var xPositions = [false, false, false, false, false, false, false, false, false];
+    var oPositions = [false, false, false, false, false, false, false, false, false];
+    var moveTree;
+    var moveSquare;
+    var player;
+
+    for(var i = 0; i < 9; i++)
+    {
+       // SET ARRAY OF POSITIONS: CODE SHOULD BE FACTORED OUT - DUPLICATE
+       if(document.getElementsByName("square" + i)[0].value == "X")
+       {
+           xPositions[i] = true;
+       }
+
+       else if(document.getElementsByName("square" + i)[0].value == "O")
+       {
+           oPositions[i] = true;
+       }
+    }
+
+    player = document.getElementsByName("turn")[0].value;
+    moveTree = buildTicTacToeGameTree(xPositions, oPositions, isXTurn(document.getElementsByName("turn")[0].value));
+    moveSquare = firstMoveToForceWin(player, player, moveTree, "");
+
+    if(moveSquare == -1)
+    {
+        // Can't force win -- try forcing draw
+        moveSquare = firstMoveToForceDraw(player, moveTree);
+        
+        if(moveSquare == -1)
+        {
+            // Can't force win or draw -- take first available square
+            moveSquare = getAvailableSquare(0);
+        } 
+    }
+
+    takeTurn(moveSquare);
+}
+
+function newGame(doesComputerGoFirst)
+{
+    setStatusBar("Play Tic-Tac-Toe");
+    for(var i = 0; i < 9; i++)
+    {
+        document.getElementsByName("square" + i)[0].value = "Move Here";
+        document.getElementsByName("owner" + i)[0].value = "N";
+    }
+
+    document.getElementsByName("turn")[0].value = "X";
+    document.getElementsByName("isGameOver")[0].value = "N";
+
+    if(doesComputerGoFirst)
+    {
+        document.getElementsByName("isComputerX")[0].value = "Y";
+        setStatusBar("Calculating...Give me some time to think, I was designed to be slow!");
+        setTimeout('makeBestMove();setStatusBar("Your turn!")',100);
+    }
+
+    else
+    {
+        document.getElementsByName("isComputerX")[0].value = "N";
+    }
+}
+
+</SCRIPT>
+
+<BODY BGCOLOR = "#FFFFFF">
+
+<FONT FACE = "VERDANA" SIZE = "+1">Brute Force Artificial Intelligence</FONT>
+
+<BR><BR>
+
+<FORM NAME = "TicTacToeBoard">
+
+<!-- owners of square: N means nobody -->
+
+<INPUT NAME = "owner0" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "owner1" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "owner2" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "owner3" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "owner4" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "owner5" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "owner6" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "owner7" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "owner8" TYPE = "HIDDEN" VALUE = "N">
+
+<INPUT NAME = "turn" TYPE = "HIDDEN" VALUE = "X">
+<INPUT NAME = "isComputerX" TYPE = "HIDDEN" VALUE = "N">
+<INPUT NAME = "isGameOver" TYPE = "HIDDEN" VALUE = "N">
+
+<!-- End owners' data -->
+
+<TABLE BORDER = "1">
+<TR><TD COLSPAN = "3"><CENTER><FONT FACE = "VERDANA"><B>Tic-Tac-Toe</B></FONT></CENTER></TD></TR>
+<TR>
+<TD><CENTER><INPUT NAME = "square0" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(0)"></CENTER></TD>
+<TD><CENTER><INPUT NAME = "square1" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(1)"></CENTER></TD>
+<TD><CENTER><INPUT NAME = "square2" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(2)"></CENTER></TD>
+</TR>
+<TR>
+<TD><CENTER><INPUT NAME = "square3" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(3)"></CENTER></TD>
+<TD><CENTER><INPUT NAME = "square4" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(4)"></CENTER></TD>
+<TD><CENTER><INPUT NAME = "square5" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(5)"></CENTER></TD>
+</TR>
+<TR>
+<TD><CENTER><INPUT NAME = "square6" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(6)"></CENTER></TD>
+<TD><CENTER><INPUT NAME = "square7" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(7)"></CENTER></TD>
+<TD><CENTER><INPUT NAME = "square8" TYPE = "BUTTON" VALUE = "Move Here" onClick = "takeTurn(8)"></CENTER></TD>
+</TR>
+<TR><TD COLSPAN = "3"><CENTER><INPUT TYPE = "TEXT" NAME = "tttMessage" VALUE = "Play Tic-Tac-Toe" SIZE = "65"></CENTER></TD></TR>
+<TR><TD COLSPAN = "3">
+<CENTER>
+<INPUT TYPE = "BUTTON" VALUE = "New Game: Computer goes first" onClick = "newGame(true)">
+<INPUT TYPE = "BUTTON" VALUE = "New Game: I go first" onClick = "newGame(false)">
+</CENTER></TD></TR>
+</TABLE>
+
+</FORM>
+
+</BODY>
+
+</HTML>
